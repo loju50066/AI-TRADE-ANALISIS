@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LZS Sniper — AI Signal Analyzer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #04060a;
+  --surface: #080c12;
+  --card: #0c1018;
+  --border: #141e2a;
+  --border2: #1a2535;
+  --sell: #ff2d4e;
+  --sell-dim: rgba(255,45,78,0.1);
+  --sell-glow: rgba(255,45,78,0.25);
+  --buy: #00e5a0;
+  --buy-dim: rgba(0,229,160,0.1);
+  --buy-glow: rgba(0,229,160,0.25);
+  --gold: #f5a623;
+  --gold-dim: rgba(245,166,35,0.1);
+  --blue: #4db8ff;
+  --text: #b8ccd8;
+  --text2: #5a7080;
+  --strong: #e8f4ff;
+  --warn: #ff8c42;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at 0% 0%, rgba(0,229,160,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(255,45,78,0.03) 0%, transparent 50%);
+}
+
+/* HEADER */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #f5a623, #ff2d4e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  color: white;
+  letter-spacing: 1px;
+}
+
+.logo-text {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: var(--strong);
+}
+
+.logo-sub {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  color: var(--text2);
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--buy);
+  letter-spacing: 2px;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--buy);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* MAIN LAYOUT */
+.main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+/* UPLOAD SECTION */
+.upload-section {
+  margin-bottom: 20px;
+}
+
+.upload-zone {
+  border: 2px dashed var(--border2);
+  background: var(--surface);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-zone:hover, .upload-zone.drag {
+  border-color: var(--gold);
+  background: rgba(245,166,35,0.04);
+}
+
+.upload-zone.has-image {
+  border-color: var(--buy);
+  background: rgba(0,229,160,0.03);
+  padding: 0;
+}
+
+.upload-icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.upload-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--strong);
+  margin-bottom: 6px;
+}
+
+.upload-sub {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  letter-spacing: 1px;
+}
+
+#chartImg {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  display: none;
+}
+
+#fileInput { display: none; }
+
+/* TF SELECTOR */
+.tf-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.tf-btn {
+  padding: 6px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tf-btn:hover { border-color: var(--gold); color: var(--gold); }
+.tf-btn.active {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ANALYZE BUTTON */
+.analyze-btn {
+  width: 100%;
+  padding: 16px;
+  margin-top: 14px;
+  background: linear-gradient(135deg, rgba(245,166,35,0.15), rgba(255,45,78,0.15));
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.analyze-btn:hover {
+  background: linear-gradient(135deg, rgba(245,166,35,0.25), rgba(255,45,78,0.25));
+  box-shadow: 0 0 20px rgba(245,166,35,0.2);
+}
+
+.analyze-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.analyze-btn .loading {
+  display: none;
+}
+
+.analyze-btn.loading-state .btn-text { display: none; }
+.analyze-btn.loading-state .loading { display: inline; }
+
+/* SECTION LABEL */
+.sec-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--text2);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sec-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* RESULT SECTION */
+.result-section {
+  display: none;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* SIGNAL CARD */
+.signal-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.signal-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+
+.signal-buy::before { background: var(--buy); }
+.signal-sell::before { background: var(--sell); }
+.signal-neutral::before { background: var(--gold); }
+
+.signal-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.signal-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+}
+
+.signal-buy .signal-title { color: var(--buy); }
+.signal-sell .signal-title { color: var(--sell); }
+.signal-neutral .signal-title { color: var(--gold); }
+
+.signal-confidence {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border: 1px solid;
+}
+
+.conf-high { color: var(--buy); border-color: rgba(0,229,160,0.4); background: var(--buy-dim); }
+.conf-med { color: var(--warn); border-color: rgba(255,140,66,0.4); background: rgba(255,140,66,0.1); }
+.conf-low { color: var(--sell); border-color: rgba(255,45,78,0.4); background: var(--sell-dim); }
+
+.signal-body { padding: 16px 18px; }
+
+/* PRICE LEVELS */
+.price-levels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.price-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.price-box-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+
+.price-box-val {
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.val-entry { color: var(--gold); }
+.val-sl { color: var(--sell); }
+.val-tp { color: var(--buy); }
+
+/* ANALYSIS TEXT */
+.analysis-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-left: 2px solid var(--border2);
+}
+
+/* CHECKLIST */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  font-size: 12px;
+  border: 1px solid;
+}
+
+.check-pass {
+  background: rgba(0,229,160,0.06);
+  border-color: rgba(0,229,160,0.2);
+  color: var(--buy);
+}
+
+.check-fail {
+  background: rgba(255,45,78,0.06);
+  border-color: rgba(255,45,78,0.2);
+  color: var(--sell);
+}
+
+.check-warn {
+  background: rgba(255,140,66,0.06);
+  border-color: rgba(255,140,66,0.2);
+  color: var(--warn);
+}
+
+.check-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* ZONE MAP */
+.zone-map {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.zone-row {
+  display: flex;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid #0a1018;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.zone-row:last-child { border-bottom: none; }
+
+.zone-bar {
+  width: 3px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.zone-price {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  min-width: 90px;
+}
+
+.zone-label {
+  flex: 1;
+  color: var(--text2);
+}
+
+.zone-tag {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  padding: 2px 7px;
+  border: 1px solid;
+  letter-spacing: 1px;
+}
+
+/* HISTORY */
+.history-section { margin-top: 24px; }
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.history-item:hover { background: rgba(255,255,255,0.02); }
+
+.hist-signal {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  letter-spacing: 1px;
+  min-width: 50px;
+}
+
+.hist-buy { color: var(--buy); }
+.hist-sell { color: var(--sell); }
+
+.hist-info { flex: 1; }
+.hist-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: var(--text2);
+  letter-spacing: 1px;
+}
+
+.hist-summary {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.hist-thumb {
+  width: 50px;
+  height: 35px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  opacity: 0.7;
+}
+
+.hist-rr {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--gold);
+}
+
+.empty-history {
+  text-align: center;
+  padding: 32px;
+  color: var(--text2);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  border: 1px dashed var(--border);
+}
+
+/* LOADING ANIMATION */
+.loading-overlay {
+  display: none;
+  padding: 32px;
+  text-align: center;
+}
+
+.loading-overlay.show { display: block; }
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: 2px;
+}
+
+.loading-steps {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.loading-step {
+  font-size: 11px;
+  color: var(--text2);
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-family: 'Space Mono', monospace;
+}
+
+.loading-step.show { opacity: 1; color: var(--buy); }
+
+/* CLEAR BTN */
+.clear-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  padding: 6px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+
+.clear-btn:hover { border-color: var(--sell); color: var(--sell); }
+
+/* API KEY */
+.api-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.api-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.api-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 8px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  outline: none;
+}
+
+.api-input:focus { border-color: var(--gold); }
+
+.api-save-btn {
+  background: var(--gold-dim);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 8px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+.api-status {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 480px) {
+  .price-levels { grid-template-columns: repeat(3, 1fr); }
+  .logo-text { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">LZS</div>
+    <div>
+      <div class="logo-text">SNIPER SIGNAL</div>
+      <div class="logo-sub">XAUUSD · AI ANALYZER</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- API KEY -->
+  <div class="api-section">
+    <div class="sec-label">API Key Google Gemini (Gratis)</div>
+    <div class="api-row">
+      <input type="password" class="api-input" id="apiKeyInput" placeholder="AIzaSy...">
+      <button class="api-save-btn" onclick="saveApiKey()">SIMPAN</button>
+    </div>
+    <div class="api-status" id="apiStatus"></div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-section">
+    <div class="sec-label">Upload Chart</div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <div id="uploadPlaceholder">
+        <div class="upload-icon">📊</div>
+        <div class="upload-title">TAP UNTUK UPLOAD CHART</div>
+        <div class="upload-sub">Screenshot dari MT5 / TradingView · JPG PNG</div>
+      </div>
+      <img id="chartImg" alt="Chart">
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)">
+    </div>
+
+    <!-- TF SELECTOR -->
+    <div class="tf-row">
+      <button class="tf-btn" onclick="selectTF(this, 'W1')">W1</button>
+      <button class="tf-btn" onclick="selectTF(this, 'D1')">D1</button>
+      <button class="tf-btn" onclick="selectTF(this, 'H4')" >H4</button>
+      <button class="tf-btn active" onclick="selectTF(this, 'H1')">H1</button>
+      <button class="tf-btn" onclick="selectTF(this, 'M30')">M30</button>
+      <button class="tf-btn" onclick="selectTF(this, 'M15')">M15</button>
+      <button class="tf-btn" onclick="selectTF(this, 'M5')">M5</button>
+      <button class="tf-btn" onclick="selectTF(this, 'M1')">M1</button>
+    </div>
+
+    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeChart()" disabled>
+      <span class="btn-text">⚡ ANALISA CHART</span>
+      <span class="loading">MENGANALISA...</span>
+    </button>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">AI SEDANG MENGANALISA</div>
+    <div class="loading-steps">
+      <div class="loading-step" id="step1">→ Membaca struktur chart...</div>
+      <div class="loading-step" id="step2">→ Identifikasi zona entry...</div>
+      <div class="loading-step" id="step3">→ Validasi checklist setup...</div>
+      <div class="loading-step" id="step4">→ Kalkulasi SL & TP...</div>
+      <div class="loading-step" id="step5">→ Generate sinyal final...</div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-section" id="resultSection">
+    <div class="sec-label">Hasil Analisa AI</div>
+
+    <!-- SIGNAL CARD -->
+    <div class="signal-card" id="signalCard">
+      <div class="signal-header">
+        <div>
+          <div class="signal-title" id="signalTitle">BUY SETUP</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text2);margin-top:3px;letter-spacing:2px" id="signalTF">H4 · XAUUSD</div>
+        </div>
+        <div class="signal-confidence conf-high" id="signalConf">HIGH CONFIDENCE</div>
+      </div>
+      <div class="signal-body">
+
+        <!-- PRICE LEVELS -->
+        <div class="price-levels">
+          <div class="price-box">
+            <div class="price-box-label">ENTRY</div>
+            <div class="price-box-val val-entry" id="resEntry">—</div>
+          </div>
+          <div class="price-box">
+            <div class="price-box-label">STOP LOSS</div>
+            <div class="price-box-val val-sl" id="resSL">—</div>
+          </div>
+          <div class="price-box">
+            <div class="price-box-label">TAKE PROFIT</div>
+            <div class="price-box-val val-tp" id="resTP">—</div>
+          </div>
+        </div>
+
+        <!-- RR -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="font-family:'Space Mono',monospace;font-size:11px;padding:4px 10px;border:1px solid rgba(245,166,35,0.4);color:var(--gold);background:var(--gold-dim)" id="resRR">RR 1:2</div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;padding:4px 10px;border:1px solid var(--border2);color:var(--text2)" id="resBias">BEARISH H4</div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;padding:4px 10px;border:1px solid var(--border2);color:var(--text2)" id="resSesi">LONDON</div>
+        </div>
+
+        <!-- ANALYSIS -->
+        <div class="analysis-text" id="resAnalysis">Analisa AI akan muncul di sini...</div>
+
+        <!-- ZONE MAP -->
+        <div class="sec-label" style="margin-top:14px">Zona Harga</div>
+        <div class="zone-map" id="zoneMap"></div>
+
+        <!-- CHECKLIST -->
+        <div class="sec-label" style="margin-top:14px">Checklist Setup</div>
+        <div class="checklist" id="checklist"></div>
+
+      </div>
+    </div>
+
+    <button class="clear-btn" onclick="clearResult()" style="margin-top:8px">✕ CLEAR HASIL</button>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="history-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="sec-label" style="margin-bottom:0;flex:1">History Sinyal</div>
+      <button class="clear-btn" onclick="clearHistory()">HAPUS SEMUA</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="empty-history">BELUM ADA SINYAL TERSIMPAN</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let selectedTF = 'H1';
+let currentImageBase64 = null;
+let apiKey = localStorage.getItem('lzs_gemini_key') || '';
+
+// Init
+if (apiKey) {
+  document.getElementById('apiKeyInput').value = apiKey;
+  document.getElementById('apiStatus').style.color = 'var(--buy)';
+  document.getElementById('apiStatus').textContent = '✓ API Key tersimpan';
+}
+
+loadHistory();
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  apiKey = key;
+  localStorage.setItem('lzs_gemini_key', key);
+  document.getElementById('apiStatus').style.color = 'var(--buy)';
+  document.getElementById('apiStatus').textContent = '✓ Tersimpan!';
+}
+
+function selectTF(btn, tf) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedTF = tf;
+}
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = document.getElementById('chartImg');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+    document.getElementById('uploadZone').classList.add('has-image');
+    
+    currentImageBase64 = ev.target.result.split(',')[1];
+    document.getElementById('analyzeBtn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  zone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const input = document.getElementById('fileInput');
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    handleFile({ target: input });
+  }
+});
+
+async function analyzeChart() {
+  if (!apiKey) {
+    alert('Masukkan API Key Google Gemini (Gratis) dulu!');
+    return;
+  }
+  if (!currentImageBase64) {
+    alert('Upload chart dulu!');
+    return;
+  }
+
+  // Show loading
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('analyzeBtn').classList.add('loading-state');
+  document.getElementById('analyzeBtn').disabled = true;
+
+  // Animate loading steps
+  const steps = ['step1','step2','step3','step4','step5'];
+  steps.forEach((s, i) => {
+    setTimeout(() => document.getElementById(s).classList.add('show'), i * 600);
+  });
+
+  const prompt = `Kamu adalah expert trader XAUUSD dengan spesialisasi Price Action, SMC, ICT, dan Fibonacci. 
+Analisa chart XAUUSD timeframe ${selectedTF} ini dengan sangat detail.
+
+Berikan analisa dalam format JSON ONLY (tidak ada teks lain, hanya JSON murni):
+{
+  "signal": "BUY" atau "SELL" atau "NO TRADE",
+  "confidence": "HIGH" atau "MEDIUM" atau "LOW",
+  "bias": "bias market saat ini contoh: BEARISH H4",
+  "entry": "harga entry contoh: 4464.50",
+  "sl": "harga stop loss",
+  "tp1": "harga take profit 1",
+  "tp2": "harga take profit 2", 
+  "tp3": "harga take profit 3",
+  "rr": "risk reward contoh: 1:2.5",
+  "sesi": "sesi trading yang cocok: LONDON / NEW YORK / WAIT",
+  "analisis": "penjelasan lengkap analisa dalam bahasa Indonesia, jelaskan: struktur market, zona entry, alasan entry, kondisi OTE/OB/FVG jika ada, max 150 kata",
+  "zona": [
+    {"harga": "4520", "label": "Resistance / OB Bearish", "tipe": "sell"},
+    {"harga": "4490", "label": "Entry Zone / OTE", "tipe": "entry"},
+    {"harga": "4464", "label": "Harga Sekarang", "tipe": "current"},
+    {"harga": "4440", "label": "Support / Demand Zone", "tipe": "buy"}
+  ],
+  "checklist": [
+    {"label": "H4 Bias Jelas", "status": "pass" atau "fail" atau "warn", "note": "keterangan singkat"},
+    {"label": "Zona Entry Valid (OB/FVG/OTE)", "status": "pass/fail/warn", "note": ""},
+    {"label": "Harga di Area OTE (0.618-0.786)", "status": "pass/fail/warn", "note": ""},
+    {"label": "Rejection Candle Terlihat", "status": "pass/fail/warn", "note": ""},
+    {"label": "Bukan Sesi Asia", "status": "pass/fail/warn", "note": ""},
+    {"label": "Tidak Ada News Besar", "status": "pass/fail/warn", "note": ""},
+    {"label": "RR Minimal 1:2", "status": "pass/fail/warn", "note": ""},
+    {"label": "SL di Luar Zona", "status": "pass/fail/warn", "note": ""}
+  ]
+}`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            {
+              inline_data: {
+                mime_type: 'image/jpeg',
+                data: currentImageBase64
+              }
+            },
+            { text: prompt }
+          ]
+        }],
+        generationConfig: {
+          maxOutputTokens: 1500,
+          temperature: 0.3
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    const text = data.candidates[0].content.parts[0].text;
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    
+    displayResult(result);
+    saveToHistory(result);
+
+  } catch (err) {
+    alert('Error: ' + err.message);
+    console.error(err);
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+    document.getElementById('analyzeBtn').classList.remove('loading-state');
+    document.getElementById('analyzeBtn').disabled = false;
+    steps.forEach(s => document.getElementById(s).classList.remove('show'));
+  }
+}
+
+function displayResult(r) {
+  const section = document.getElementById('resultSection');
+  const card = document.getElementById('signalCard');
+  
+  // Signal type styling
+  card.className = 'signal-card';
+  if (r.signal === 'BUY') card.classList.add('signal-buy');
+  else if (r.signal === 'SELL') card.classList.add('signal-sell');
+  else card.classList.add('signal-neutral');
+
+  document.getElementById('signalTitle').textContent = r.signal + ' SETUP';
+  document.getElementById('signalTF').textContent = selectedTF + ' · XAUUSD';
+  
+  // Confidence
+  const confEl = document.getElementById('signalConf');
+  confEl.textContent = r.confidence + ' CONFIDENCE';
+  confEl.className = 'signal-confidence';
+  if (r.confidence === 'HIGH') confEl.classList.add('conf-high');
+  else if (r.confidence === 'MEDIUM') confEl.classList.add('conf-med');
+  else confEl.classList.add('conf-low');
+
+  // Levels
+  document.getElementById('resEntry').textContent = r.entry || '—';
+  document.getElementById('resSL').textContent = r.sl || '—';
+  document.getElementById('resTP').textContent = r.tp1 || '—';
+  document.getElementById('resRR').textContent = 'RR ' + (r.rr || '—');
+  document.getElementById('resBias').textContent = r.bias || '—';
+  document.getElementById('resSesi').textContent = r.sesi || '—';
+  document.getElementById('resAnalysis').textContent = r.analisis || '—';
+
+  // Zone map
+  const zoneMap = document.getElementById('zoneMap');
+  zoneMap.innerHTML = '';
+  if (r.zona && r.zona.length) {
+    r.zona.forEach(z => {
+      const color = z.tipe === 'sell' ? 'var(--sell)' : z.tipe === 'buy' ? 'var(--buy)' : z.tipe === 'entry' ? 'var(--gold)' : 'var(--blue)';
+      const tagColor = z.tipe === 'sell' ? 'sell' : z.tipe === 'buy' ? 'buy' : 'neutral';
+      zoneMap.innerHTML += `
+        <div class="zone-row">
+          <div class="zone-bar" style="background:${color}"></div>
+          <div class="zone-price" style="color:${color}">${z.harga}</div>
+          <div class="zone-label">${z.label}</div>
+          <div class="zone-tag" style="color:${color};border-color:${color}40">${z.tipe.toUpperCase()}</div>
+        </div>`;
+    });
+  }
+
+  // Checklist
+  const checklist = document.getElementById('checklist');
+  checklist.innerHTML = '';
+  if (r.checklist && r.checklist.length) {
+    r.checklist.forEach(c => {
+      const cls = c.status === 'pass' ? 'check-pass' : c.status === 'fail' ? 'check-fail' : 'check-warn';
+      const icon = c.status === 'pass' ? '✓' : c.status === 'fail' ? '✗' : '⚠';
+      checklist.innerHTML += `
+        <div class="check-item ${cls}">
+          <span class="check-icon">${icon}</span>
+          <span>${c.label}${c.note ? ' — ' + c.note : ''}</span>
+        </div>`;
+    });
+  }
+
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function clearResult() {
+  document.getElementById('resultSection').style.display = 'none';
+}
+
+// HISTORY
+function saveToHistory(result) {
+  const history = JSON.parse(localStorage.getItem('lzs_history') || '[]');
+  const item = {
+    id: Date.now(),
+    signal: result.signal,
+    tf: selectedTF,
+    entry: result.entry,
+    sl: result.sl,
+    tp: result.tp1,
+    rr: result.rr,
+    bias: result.bias,
+    summary: result.analisis ? result.analisis.substring(0, 80) + '...' : '',
+    time: new Date().toLocaleString('id-ID'),
+    thumb: document.getElementById('chartImg').src
+  };
+  history.unshift(item);
+  if (history.length > 20) history.pop();
+  localStorage.setItem('lzs_history', JSON.stringify(history));
+  loadHistory();
+}
+
+function loadHistory() {
+  const history = JSON.parse(localStorage.getItem('lzs_history') || '[]');
+  const list = document.getElementById('historyList');
+  
+  if (!history.length) {
+    list.innerHTML = '<div class="empty-history">BELUM ADA SINYAL TERSIMPAN</div>';
+    return;
+  }
+
+  list.innerHTML = history.map(h => `
+    <div class="history-item">
+      <img src="${h.thumb}" class="hist-thumb" alt="">
+      <div class="hist-info">
+        <div class="hist-time">${h.time} · ${h.tf}</div>
+        <div class="hist-summary">${h.summary}</div>
+      </div>
+      <div>
+        <div class="hist-signal ${h.signal === 'BUY' ? 'hist-buy' : 'hist-sell'}">${h.signal}</div>
+        <div class="hist-rr">${h.rr || ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  if (confirm('Hapus semua history sinyal?')) {
+    localStorage.removeItem('lzs_history');
+    loadHistory();
+  }
+}
+</script>
+</body>
+</html>
